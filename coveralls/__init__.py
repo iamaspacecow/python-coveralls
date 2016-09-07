@@ -1,5 +1,5 @@
 __author__ = 'Andrea De Marco <24erre@gmail.com>'
-__version__ = '2.7.0'
+__version__ = '2.7.1'
 __classifiers__ = [
     'Development Status :: 5 - Production/Stable',
     'Intended Audience :: Developers',
@@ -46,6 +46,8 @@ def parse_args():
     import os
     import yaml
     import argparse
+    import logging
+    logger = logging.getLogger('coveralls')
     parser = argparse.ArgumentParser(prog='coveralls')
     parser.add_argument('--coveralls_url', '-u', help='coveralls.io api url', default='https://coveralls.io/api/v1/jobs')
     parser.add_argument('--base_dir', '-b', help='project root directory', default='.')
@@ -69,9 +71,11 @@ def parse_args():
         pass
     yml = yml or {}
     args.repo_token = yml.get('repo_token', os.environ.get('COVERALLS_REPO_TOKEN', ''))
+    logger.info('repo_token is'.format(args.repo_token))
     args.service_name = yml.get('service_name', 'travis-ci')
-    args.service_job_id = os.environ.get('TRAVIS_JOB_ID', '')
+    args.service_job_id = '' #os.environ.get('TRAVIS_JOB_ID', '')
     args.parallel = yml.get('parallel', os.environ.get('COVERALLS_PARALLEL', False))
+    print(args)
     return args
 
 
@@ -94,6 +98,21 @@ def wear(args=None):
         source_files=coverage.coveralls(args.base_dir, ignore_errors=args.ignore_errors, merge_file=args.merge_file),
         parallel=args.parallel,
     )
+    logger.info('url: {url}\n'
+                'repo_token: {repo_token}\n'
+                'service_job_id: {service_job_id}\n'
+                'service_name: {service_name}\n'
+                'git: {git}\n'
+                'source_files: {source_files}\n'
+                'parallel: {parallel}'.format(
+        url=args.coveralls_url,
+        repo_token=args.repo_token,
+        service_job_id=args.service_job_id,
+        service_name=args.service_name,
+        git=repo(args.base_dir) if not args.nogit else {},
+        source_files=len(coverage.coveralls(args.base_dir, ignore_errors=args.ignore_errors, merge_file=args.merge_file)),
+        parallel=args.parallel,
+    ))
     logger.info(response.status_code)
     logger.info(response.text)
     return 1 if 'error' in response.json() else 0
